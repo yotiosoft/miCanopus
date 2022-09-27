@@ -7,10 +7,10 @@ all: hello.efi
 	lld-link /subsystem:efi_application /entry:EfiMain /out:$@ $<
 
 .PHONY: run
-run: hello.efi
-	../../devenv/run_qemu.sh hello.efi
+run: main.efi
+	../../devenv/run_qemu.sh main.efi
 
 clean:
-	rm -f hello.efi
+	rm -f main.efi
 	rm -f disk.img
 	rm -rf mnt
