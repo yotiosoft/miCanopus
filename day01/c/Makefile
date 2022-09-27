@@ -1,4 +1,4 @@
-all: hello.efi
+all: main.efi
 
 %.o: %.c
 	clang -target x86_64-pc-win32-coff -o $@ -c $<

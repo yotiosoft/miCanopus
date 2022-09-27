@@ -42,6 +42,37 @@ EFI_STATUS GetMemoryMap(struct MemoryMap* map) {
   );
 }
 
+EFI_STATUS SaveMemoryMap(struct MemoryMap* map, EFI_FILE_PROTOCOL* file) {
+  CHAR8 buf[256];
+  UINTN len;
+
+  CHAR8* header = "Index, Type, Type(name), PhysicalStart, NumberOfPages, Attribute\n";
+  len = AsciiStrLen(header);
+  file->Write(file, &len, header);
+
+  Print(L"map->buffer = %08lx, map->map_size = %08lx\n", map->buffer, map->map_size);
+
+  EFI_PHYSICAL_ADDRESS iter;
+  int i;
+  for (iter = (EFI_PHYSICAL_ADDRESS)map->buffer, i = 0;
+       iter < (EFI_PHYSICAL_ADDRESS)map->buffer + map->map_size;
+       iter += map->descriptor_size, i++) {
+    EFI_MEMORY_DESCRIPTOR* desc = (EFI_MEMORY_DESCRIPTOR*)iter;
+    // メモリディスクリプタの内容を文字列に変換
+    len = AsciiSPrint(
+      buf, sizeof(buf),
+      "%u, %x, %-ls, %08lx, %lx, %lx\n",
+      i, desc->Type, GetMemoryTypeUnicode(desc->Type),
+      desc->PhysicalStart, desc->NumberOfPages,
+      desc->Attribute & 0xffffflu
+    );
+    // ファイルに書き出し
+    file->Write(file, &len, buf);
+
+    return EFI_SUCCESS;
+  }
+}
+
 EFI_STATUS EfiMain(EFI_HANDLE        ImageHandle,
                    EFI_SYSTEM_TABLE  *SystemTable) {
   SystemTable->ConOut->OutputString(SystemTable->ConOut, L"Hello, world!\n");
