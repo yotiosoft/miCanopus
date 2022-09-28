@@ -110,10 +110,8 @@ EFI_STATUS OpenRootDir(EFI_HANDLE image_handle, EFI_FILE_PROTOCOL** root) {
   return EFI_SUCCESS;
 }
 
-EFI_STATUS UefiMain(EFI_HANDLE        image_handle,
-                   EFI_SYSTEM_TABLE  *system_table) {
-  system_table->ConOut->OutputString(system_table->ConOut, L"Hello, world!\n");
-
+// メモリマップの書き出し
+void write_memmap(EFI_HANDLE image_handle) {
   // day02
   CHAR8 memmap_buf[4096 * 4];
   struct MemoryMap memmap = {sizeof(memmap_buf), memmap_buf, 0, 0, 0, 0};
@@ -131,6 +129,14 @@ EFI_STATUS UefiMain(EFI_HANDLE        image_handle,
 
   SaveMemoryMap(&memmap, memmap_file);
   memmap_file->Close(memmap_file);
+}
+
+EFI_STATUS UefiMain(EFI_HANDLE        image_handle,
+                   EFI_SYSTEM_TABLE  *system_table) {
+  system_table->ConOut->OutputString(system_table->ConOut, L"Hello, world!\n");
+
+  // メモリマップの書き出し
+  write_memmap(image_handle);
 
   while (1);
   return EFI_SUCCESS;
