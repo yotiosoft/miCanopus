@@ -17,13 +17,6 @@ struct MemoryMap {
   UINT32 descriptor_version;
 };
 
-typedef struct {
-  UINT64 Size, FileSize, PhysicalSize;
-  EFI_TIME CreateTime, LastAccessTime, ModificationTime;
-  UINT64 Attribute;
-  CHAR16 FileName[];
-} EFI_FILE_INFO;
-
 EFI_STATUS GetMemoryMap(struct MemoryMap* map) {
   if (map->buffer == NULL) {
     return EFI_BUFFER_TOO_SMALL;
@@ -118,24 +111,6 @@ EFI_STATUS OpenRootDir(EFI_HANDLE image_handle, EFI_FILE_PROTOCOL** root) {
   return EFI_SUCCESS;
 }
 
-// メモリマップの書き出し
-void write_memmap(EFI_HANDLE image_handle, EFI_FILE_PROTOCOL* root_dir) {
-  // day02
-  CHAR8 memmap_buf[4096 * 4];
-  struct MemoryMap memmap = {sizeof(memmap_buf), memmap_buf, 0, 0, 0, 0};
-  GetMemoryMap(&memmap);
-
-  EFI_FILE_PROTOCOL* memmap_file;
-
-  root_dir->Open(
-    root_dir, &memmap_file, L"\\memmap",
-    EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0
-  );
-
-  SaveMemoryMap(&memmap, memmap_file);
-  memmap_file->Close(memmap_file);
-}
-
 // カーネル起動前にブートサービスを停止させる
 void disable_boot_service(EFI_HANDLE image_handle) {
   CHAR8 memmap_buf[4096 * 4];
@@ -196,14 +171,11 @@ void boot_kernel(EFI_PHYSICAL_ADDRESS kernel_base_address) {
 
 EFI_STATUS UefiMain(EFI_HANDLE        image_handle,
                    EFI_SYSTEM_TABLE  *system_table) {
-  system_table->ConOut->OutputString(system_table->ConOut, L"Hello, world!\n");
+  Print(L"Hello, miCanopus!\n");
 
   // ルートディレクトリを開く
   EFI_FILE_PROTOCOL* root_dir;
   OpenRootDir(image_handle, &root_dir);
-
-  // メモリマップの書き出し
-  write_memmap(image_handle, root_dir);
 
   // カーネルの読み込み
   EFI_PHYSICAL_ADDRESS kernel_base_addr = load_kernel(root_dir);
