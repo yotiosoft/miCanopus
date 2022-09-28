@@ -111,14 +111,11 @@ EFI_STATUS OpenRootDir(EFI_HANDLE image_handle, EFI_FILE_PROTOCOL** root) {
 }
 
 // メモリマップの書き出し
-void write_memmap(EFI_HANDLE image_handle) {
+void write_memmap(EFI_HANDLE image_handle, EFI_FILE_PROTOCOL* root_dir) {
   // day02
   CHAR8 memmap_buf[4096 * 4];
   struct MemoryMap memmap = {sizeof(memmap_buf), memmap_buf, 0, 0, 0, 0};
   GetMemoryMap(&memmap);
-
-  EFI_FILE_PROTOCOL* root_dir;
-  OpenRootDir(image_handle, &root_dir);
 
   EFI_FILE_PROTOCOL* memmap_file;
 
@@ -131,12 +128,40 @@ void write_memmap(EFI_HANDLE image_handle) {
   memmap_file->Close(memmap_file);
 }
 
+// カーネルの読み込み
+void load_kernel(EFI_FILE_PROTOCOL* root_dir) {
+  EFI_FILE_PROTOCOL* kernel_file;
+  root_dir->Open(root_dir, &kernel_file, L"\\kernel.elf", EFI_FILE_MODE_READ, 0);
+
+  UINTN file_info_size = sizeof(EFI_FILE_INFO) + sizeof(CHAR16) * 12;
+  UINT8 file_info_buffer[file_info_size];
+  kernel_file->GetInfo(kernel_file, &gEfiFileInfoGuid, &file_info_size, file_info_buffer);
+
+  EFI_FILE_INFO* file_info = (EFI_FILE_INFO*)file_info_buffer;
+  UINTN kernel_file_size = file_info->FileSize;
+
+  EFI_PHYSICAL_ADDRESS kernel_base_addr = 0x100000;
+  gBS->AllocatePages(
+    AllocateAddress, EfiLoaderData,
+    (kernel_file_size + 0xfff) / 0x1000, &kernel_base_addr
+  );
+  kernel_file->Read(kernel_file, &kernel_file_size, (VOID*)kernel_base_addr);
+  Print(L"Kernel: 0x%0lx (%lu bytes)\n", kernel_base_addr, kernel_file_size);
+}
+
 EFI_STATUS UefiMain(EFI_HANDLE        image_handle,
                    EFI_SYSTEM_TABLE  *system_table) {
   system_table->ConOut->OutputString(system_table->ConOut, L"Hello, world!\n");
 
+  // ルートディレクトリを開く
+  EFI_FILE_PROTOCOL* root_dir;
+  OpenRootDir(image_handle, &root_dir);
+
   // メモリマップの書き出し
-  write_memmap(image_handle);
+  write_memmap(image_handle, root_dir);
+
+  // カーネルの読み込み
+  load_kernel(root_dir);
 
   while (1);
   return EFI_SUCCESS;
